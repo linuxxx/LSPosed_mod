@@ -122,7 +122,7 @@ dependencies {
     implementation(projects.services.daemonService)
     compileOnly(libs.androidx.annotation)
     compileOnly(projects.hiddenapi.stubs)
-    compileOnly(projects.libxposedCompat)
+//    compileOnly(projects.libxposedCompat)
 }
 
 val zipAll = task("zipAll") {

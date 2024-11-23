@@ -33,7 +33,7 @@ include(
     ":hiddenapi:stubs",
     ":hiddenapi:bridge",
     ":magisk-loader",
-    ":libxposed-compat",
+    ":libxposed",
     ":services:manager-service",
     ":services:daemon-service",
     ":services:xposed-service:interface",
