@@ -4,6 +4,7 @@ import static org.lsposed.lspd.core.ApplicationServiceClient.serviceClient;
 
 import android.app.ActivityThread;
 import android.app.LoadedApk;
+import android.app.admin.DevicePolicyManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -52,6 +53,8 @@ public class ParasiticManagerHooker {
     private final static Map<String, PersistableBundle> persistentStates = new ConcurrentHashMap<>();
 
     private synchronized static PackageInfo getManagerPkgInfo(ApplicationInfo appInfo) {
+
+
         if (managerPkgInfo == null && appInfo != null) {
             try {
                 Context ctx = ActivityThread.currentActivityThread().getSystemContext();

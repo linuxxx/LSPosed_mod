@@ -122,6 +122,7 @@ dependencies {
     implementation(projects.services.daemonService)
     compileOnly(libs.androidx.annotation)
     compileOnly(projects.hiddenapi.stubs)
+    compileOnly(projects.libxposedCompat)
 }
 
 val zipAll = task("zipAll") {
@@ -159,11 +160,11 @@ val generateWebRoot = tasks.register<Copy>("generateWebRoot") {
     doLast {
         exec {
             workingDir = webroottmp
-            commandLine("yarn", "add", "parcel-bundler", "kernelsu", "--dev")
+            commandLine("cmd","yarn", "add", "parcel-bundler", "kernelsu", "--dev")
         }
         exec {
             workingDir = webroottmp
-            commandLine("./node_modules/.bin/parcel", "build", "src/index.html")
+            commandLine("cmd","./node_modules/.bin/parcel", "build", "src/index.html")
         }
     }
 }

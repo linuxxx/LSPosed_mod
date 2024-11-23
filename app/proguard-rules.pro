@@ -14,6 +14,7 @@
   @com.google.gson.annotations.SerializedName <fields>;
 }
 
+
 -repackageclasses
 -allowaccessmodification
 -overloadaggressively
