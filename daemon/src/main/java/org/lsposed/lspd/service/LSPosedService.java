@@ -176,6 +176,16 @@ public class LSPosedService extends ILSPosedService.Stub {
                     // If cache not updated, assume it's not xposed module
                     isXposedModule = configManager.updateModuleApkPath(moduleName, ConfigManager.getInstance().getModuleApkPath(applicationInfo), false);
                 } else {
+                    try {
+//                        if (applicationInfo != null && applicationInfo.category == ApplicationInfo.CATEGORY_GAME) {  //如果是游戏, 则更新缓存
+                                                if (applicationInfo != null) {  //如果是游戏, 则更新缓存
+                            Log.d(TAG, "Game app detected: " + moduleName + ", updating scope caches");
+                            configManager.updateAppCache();
+                        }
+                    } catch (Throwable e) {
+                        Log.e(TAG, "Failed to check game category for " + moduleName, e);
+                    }
+
                     if (configManager.isUidHooked(uid)) {
                         // it will automatically remove obsolete app from database
                         configManager.updateAppCache();

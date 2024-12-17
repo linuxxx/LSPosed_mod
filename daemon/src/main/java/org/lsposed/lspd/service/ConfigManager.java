@@ -29,6 +29,7 @@ import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageParser;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -744,6 +745,63 @@ public class ConfigManager {
                     Log.e(TAG, Log.getStackTraceString(e));
                 }
             }
+
+            try {
+                // 获取所有已启用且可用的模块
+                List<Module> enabledModules = new ArrayList<>();
+                for (Map.Entry<Pair<String, Integer>, Boolean> entry : moduleAvailability.entrySet()) {
+                    if (entry.getValue()) {  // 模块可用
+                        String modulePkgName = entry.getKey().first;
+                        Module module = cachedModule.get(modulePkgName);
+                        if (module != null) {
+                            enabledModules.add(module);
+                        }
+                    }
+                }
+
+                // 获取所有游戏应用
+                List<ApplicationInfo> gameApps = PackageService.getInstalledApplications(0);
+                for (ApplicationInfo appInfo : gameApps) {
+                    Application gameApp = new Application();
+                    gameApp.packageName = appInfo.packageName;
+                    gameApp.userId = appInfo.uid / PER_USER_RANGE;
+
+                    // 跳过在denylist中的应用
+                    if (denylist.contains(gameApp.packageName)) {
+                        Log.w(TAG, gameApp.packageName + " is on denylist. Skipping game auto-scope.");
+                        continue;
+                    }
+
+                    List<ProcessScope> processesScope = cachedProcessScope.computeIfAbsent(
+                            new Pair<>(gameApp.packageName, gameApp.userId),
+                            k -> {
+                                try {
+                                    return getAssociatedProcesses(gameApp);
+                                } catch (RemoteException e) {
+                                    return Collections.emptyList();
+                                }
+                            });
+
+                    if (!processesScope.isEmpty()) {
+                        for (ProcessScope processScope : processesScope) {
+                            List<Module> modules = cachedScope.computeIfAbsent(processScope,
+                                    ignored -> new LinkedList<>());
+
+                            // 检查并添加未包含的模块
+                            for (Module module : enabledModules) {
+                                if (!modules.contains(module)) {
+                                    modules.add(module);
+                                    Log.d(TAG, "Added module " + module.packageName +
+                                            " to game: " + gameApp.packageName +
+                                            " (process: " + processScope.processName + ")");
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to process game applications", e);
+            }
             if (PackageService.isAlive()) {
                 for (Application obsoletePackage : obsoletePackages) {
                     Log.d(TAG, "removing obsolete package: " + obsoletePackage.packageName + "/" + obsoletePackage.userId);
@@ -769,11 +827,36 @@ public class ConfigManager {
 
     // This is called when a new process created, use the cached result
     public List<Module> getModulesForProcess(String processName, int uid) {
+        // 如果不是管理器，返回所有启用的模块
+        try {
+            if (!isManager(uid)) {
+                return new ArrayList<>(cachedModule.values());
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to get ApplicationInfo for process: " + processName, e);
+        }
         return isManager(uid) ? Collections.emptyList() : cachedScope.getOrDefault(new ProcessScope(processName, uid), Collections.emptyList());
+    }
+
+    private boolean isGameApp(String processName, int uid) throws RemoteException {
+        ApplicationInfo appInfo = PackageService.getApplicationInfo(processName, 0, uid / PER_USER_RANGE);
+        if (appInfo != null && appInfo.category == ApplicationInfo.CATEGORY_GAME) {
+            // 返回所有已启用的模块
+            return true;
+        }
+        return false;
     }
 
     // This is called when a new process created, use the cached result
     public boolean shouldSkipProcess(ProcessScope scope) {
+//        try {
+//            if (isGameApp(scope.processName, scope.uid)) {
+//                return false;  // 是游戏应用则不跳过
+//            }
+//        } catch (RemoteException e) {
+//            Log.e(TAG, "Failed to get ApplicationInfo for process: " + scope.processName, e);
+//        }
         return !cachedScope.containsKey(scope) && !isManager(scope.uid);
     }
 
@@ -1281,7 +1364,7 @@ public class ConfigManager {
 
     public boolean getAutomaticAdd(String packageName) {
         try (Cursor cursor = db.query("modules", new String[]{"automatic_add"},
-               "module_pkg_name = ? and automatic_add = 1", new String[]{packageName}, null, null, null, null)) {
+                "module_pkg_name = ? and automatic_add = 1", new String[]{packageName}, null, null, null, null)) {
             return cursor == null || cursor.moveToNext();
         }
     }

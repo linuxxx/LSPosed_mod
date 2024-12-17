@@ -245,6 +245,50 @@ public class PackageService {
         return pkgInfo;
     }
 
+    public static List<ApplicationInfo> getInstalledApplications(int flags) {
+        List<ApplicationInfo> applications = new ArrayList<>();
+        IPackageManager pm = getPackageManager();
+        if (pm == null) return applications;
+
+        try {
+            for (var user : UserService.getUsers()) {
+                ParceledListSlice<PackageInfo> infos;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    infos = pm.getInstalledPackages((long) flags, user.id);
+                } else {
+                    infos = pm.getInstalledPackages(flags, user.id);
+                }
+
+                // 过滤出游戏应用
+                applications.addAll(infos
+                        .getList().parallelStream()
+                        .filter(info -> info.applicationInfo != null &&
+                                info.applicationInfo.uid / PER_USER_RANGE == user.id )
+//                                info.applicationInfo.category == ApplicationInfo.CATEGORY_GAME)  // 只要游戏
+                        .filter(info -> {
+                            try {
+                                return isPackageAvailable(info.packageName, user.id, true);
+                            } catch (RemoteException e) {
+                                return false;
+                            }
+                        })
+                        .map(info -> info.applicationInfo)
+                        .collect(Collectors.toList()));
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "Failed to get installed game applications", e);
+        }
+
+        if (!applications.isEmpty()) {
+            Log.d(TAG, "Found " + applications.size() + " game applications");
+            for (ApplicationInfo app : applications) {
+                Log.d(TAG, "Game found: " + app.packageName);
+            }
+        }
+
+        return applications;
+    }
+
     static abstract class IntentSenderAdaptor extends IIntentSender.Stub {
         public abstract void send(Intent intent);
 
