@@ -259,12 +259,11 @@ public class PackageService {
                     infos = pm.getInstalledPackages(flags, user.id);
                 }
 
-                // 过滤出游戏应用
                 applications.addAll(infos
                         .getList().parallelStream()
                         .filter(info -> info.applicationInfo != null &&
-                                info.applicationInfo.uid / PER_USER_RANGE == user.id )
-//                                info.applicationInfo.category == ApplicationInfo.CATEGORY_GAME)  // 只要游戏
+                                info.applicationInfo.uid / PER_USER_RANGE == user.id &&
+                                (info.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0)
                         .filter(info -> {
                             try {
                                 return isPackageAvailable(info.packageName, user.id, true);
